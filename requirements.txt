@@ -1,0 +1,27 @@
+azure-storage-blob 
+azure-identity
+azure-cognitiveservices-speech
+langchain-openai
+pandas
+langchain-text-splitters
+pytz
+pymupdf
+pypdf
+pyYAML
+tiktoken
+langchain
+langchain-core
+langchain-community
+langgraph
+langsmith
+python-dotenv
+chromadb
+groq
+google.genai
+azure-cognitiveservices-speech
+requests
+fastapi
+uvicorn
+streamlit
+streamlit-mic-recorder
+-e .
