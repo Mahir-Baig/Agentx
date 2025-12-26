@@ -15,4 +15,4 @@ src/services/__pycache__/azure_blob_service.cpython-312.pyc
 src/services/__pycache__/azure_blob_service.cpython-313.pyc
 __pycache__
 blob
-venv
+venv.env

@@ -7,7 +7,7 @@ from src.config.constants import *
 import sys
 
 load_dotenv() 
-azure_storageaccount_cs= 'DefaultEndpointsProtocol=https;AccountName=poc123;AccountKey=rOkUqgjfGmAH9ViVfv5zuOV4U1rk3IlDKHxjj2unJ/uCz+dBKM7sAdsBBwk2EPdnkAM3Wi1hSMXs+AStUpE1hQ==;EndpointSuffix=core.windows.net'
+azure_storageaccount_cs=  os.getenv("azure_storageaccount_cs")
 
 class AzureBlobManager:
     def __init__(self, connection_string=azure_storageaccount_cs):
