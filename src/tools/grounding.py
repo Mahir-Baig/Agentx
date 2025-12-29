@@ -10,6 +10,7 @@ from langchain_core.tools import tool
 from langsmith import traceable
 from dotenv import load_dotenv
 import requests
+import re
 from src.logger import logger
 
 load_dotenv()
@@ -44,34 +45,36 @@ def _call_perplexity_api(query: str) -> Optional[Dict[str, Any]]:
             "messages": [
                 {
                     "role": "system",
-                    "content": """You are a helpful AI assistant that provides accurate, well-researched answers using web sources.
+                    "content": """You are a helpful AI assistant. Provide accurate answers with proper citations.
 
-**MANDATORY CITATION RULES:**
+**CRITICAL - YOU MUST FOLLOW THIS EXACTLY:**
 
-1. **Inline Citations**: Use numbered citations [1], [2], [3] immediately after each claim
-   - Example: "Python was created in 1991 [1]. It emphasizes code readability [2]."
+1. **Answer Format**: Write your answer normally with citations [1][2][3] after facts
 
-2. **Sources Section**: End response with clickable markdown links
-   Format: [1] [Website Name](full_url)
-   Examples: [1] [OpenAI](https://openai.com) [2] [Wikipedia](https://en.wikipedia.org/wiki/Topic)
-
-3. **Rules**:
-   - Cite every factual claim, statistic, and quote
-   - Use authoritative sources
-   - Keep display text concise (2-5 words)
-   - Reuse citation numbers for the same source
-   - NO inline citations without a Sources section
-
-4. **Response Template**:
-   [Your answer with inline citations [1][2][3]]
+2. **Sources Section**: End EVERY response with this exact format:
    
    Sources:
-   [1] [Source Name](url)
-   [2] [Source Name](url)
-   [3] [Source Name](url)
+   [1] [Full Source Title](https://exact-full-url.com/path)
+   [2] [Another Source](https://another-url.com)
+   [3] [Third Source](https://third-url.com)
 
-Be factual, concise, and ground all answers in cited sources.
-"""
+**RULES:**
+- ALWAYS include actual FULL URLs in sources, not just domain names
+- Use markdown format: [DisplayName](fullurl)
+- NEVER use plain text source names - they MUST be clickable links
+- Include the complete URL including protocol (https://)
+- If you don't have exact URL, provide the best matching source URL
+- Separate numbered citations with newlines
+- Do NOT include "Sources:" label with citations data - keep them as clean markdown links
+
+**EXAMPLE:**
+   The Earth orbits the Sun [1]. Python is a programming language [2].
+   
+   Sources:
+   [1] [NASA Earth Information](https://www.nasa.gov/earth/)
+   [2] [Python Official Documentation](https://www.python.org/doc/)
+
+Remember: Clickable markdown links are MANDATORY. Use format [text](url)."""
                 },
                 {
                     "role": "user",
@@ -151,48 +154,106 @@ def grounding(query: str) -> str:
         
         logger.info(f"✓ Grounded answer received ({len(answer)} characters)")
         logger.info(f"✓ Found {len(citations)} citations")
+        logger.info(f"Raw citations: {citations}")
         
-        # Format response similar to Perplexity UI with citations
+        # Format response with proper markdown links
         response_parts = []
-        response_parts.append("🌐 Web Search Answer:")
+        response_parts.append("🌐 **Web Search Answer:**")
         response_parts.append("")
         response_parts.append(answer)
         
-        # Add numbered web sources/citations if available
-        if citations:
-            response_parts.append("")
-            response_parts.append("📚 Sources:")
+        # Extract markdown links from answer (Perplexity should format them)
+        # Pattern: [Text](url)
+        markdown_links = re.findall(r'\[([^\[\]]+)\]\(https?://[^\)]+\)', answer)
+        logger.info(f"Found {len(markdown_links)} markdown links in answer")
+        
+        # Extract and format citations with fallback
+        formatted_sources = []
+        
+        # PREFERRED: Extract markdown links directly from answer
+        sources_match = re.search(
+            r'(?:Sources?:|📚.*?Sources?:)\s*((?:\[[^\]]+\]\([^\)]+\)[\r\n]*)+)',
+            answer,
+            re.IGNORECASE | re.DOTALL
+        )
+        
+        if sources_match:
+            # Markdown sources already in answer - extract them
+            sources_section = sources_match.group(1)
+            source_links = re.findall(r'\[([^\[\]]+)\]\((https?://[^\)]+)\)', sources_section)
+            
+            for i, (title, url) in enumerate(source_links, 1):
+                formatted_sources.append(f"[{i}] [{title}]({url})")
+                logger.info(f"Extracted markdown source {i}: [{title}]({url})")
+            
+            # Remove the sources section from answer to avoid duplication
+            answer = re.sub(
+                r'\n*(?:Sources?:|📚.*?Sources?:)\s*(?:\[[^\]]+\]\([^\)]+\)[\r\n]*)+',
+                '',
+                answer,
+                flags=re.IGNORECASE | re.DOTALL
+            ).strip()
+        
+        # FALLBACK: Parse citations array if markdown extraction failed
+        if not formatted_sources and citations:
+            logger.info("No markdown links found in answer, parsing citations array as fallback")
             for i, citation in enumerate(citations, 1):
-                # Ensure proper markdown link format: [text](url)
-                if citation.startswith('http'):
-                    # URL only - extract domain as display text
-                    from urllib.parse import urlparse
-                    parsed = urlparse(citation)
-                    domain = parsed.netloc.replace('www.', '')
-                    response_parts.append(f"[{i}] [{domain}]({citation})")
-                elif '|' in citation:
-                    # Format: "Title|URL" - convert to markdown
-                    title, url = citation.split('|', 1)
-                    response_parts.append(f"[{i}] [{title.strip()}]({url.strip()})")
-                elif ' - ' in citation and 'http' in citation:
-                    # Format: "Title - URL"
-                    title, url = citation.rsplit(' - ', 1)
-                    response_parts.append(f"[{i}] [{title.strip()}]({url.strip()})")
-                elif citation.startswith('[') and '](' in citation:
-                    # Already in markdown format
-                    response_parts.append(f"[{i}] {citation}")
+                source_link = None
+                
+                # Try multiple citation formats
+                if isinstance(citation, dict):
+                    # If citation is a dict with url/title
+                    url = citation.get('url') or citation.get('href') or citation.get('link')
+                    title = citation.get('title') or citation.get('name')
+                    if url:
+                        source_link = f"[{i}] [{title or 'Source'}]({url})"
+                
+                elif isinstance(citation, str):
+                    if citation.startswith('http'):
+                        # Pure URL
+                        from urllib.parse import urlparse
+                        parsed = urlparse(citation)
+                        domain = parsed.netloc.replace('www.', '')
+                        source_link = f"[{i}] [{domain}]({citation})"
+                    
+                    elif '|' in citation:
+                        # Title|URL format
+                        parts = citation.split('|', 1)
+                        title = parts[0].strip()
+                        url = parts[1].strip()
+                        if url.startswith('http'):
+                            source_link = f"[{i}] [{title}]({url})"
+                    
+                    elif ' - ' in citation:
+                        # Title - URL format
+                        parts = citation.rsplit(' - ', 1)
+                        if len(parts) == 2 and parts[1].strip().startswith('http'):
+                            title = parts[0].strip()
+                            url = parts[1].strip()
+                            source_link = f"[{i}] [{title}]({url})"
+                    
+                    # Fallback: check if citation contains URL anywhere
+                    if not source_link and 'http' in citation:
+                        urls = re.findall(r'https?://[^\s\]]+', citation)
+                        if urls:
+                            url = urls[0]
+                            title = citation.replace(url, '').strip()
+                            source_link = f"[{i}] [{title or 'Source'}]({url})"
+                
+                if source_link:
+                    formatted_sources.append(source_link)
+                    logger.info(f"Formatted citation {i}: {source_link}")
                 else:
-                    # Plain text - try to make it a link if it contains URL
-                    if 'http' in citation:
-                        parts = citation.split()
-                        url = [p for p in parts if p.startswith('http')]
-                        if url:
-                            text = citation.replace(url[0], '').strip()
-                            response_parts.append(f"[{i}] [{text or 'Source'}]({url[0]})")
-                        else:
-                            response_parts.append(f"[{i}] {citation}")
-                    else:
-                        response_parts.append(f"[{i}] {citation}")
+                    # Last resort: use plain text with warning
+                    logger.warning(f"Citation {i} has no URL: {citation}")
+                    formatted_sources.append(f"[{i}] {citation}")
+        
+        # Add sources section if we have them
+        if formatted_sources:
+            response_parts.append("")
+            response_parts.append("---")
+            response_parts.append("**📚 Sources:**")
+            response_parts.extend(formatted_sources)
         
         final_response = "\n".join(response_parts)
         logger.info("Grounding completed successfully!")
