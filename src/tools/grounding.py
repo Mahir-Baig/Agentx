@@ -46,61 +46,31 @@ def _call_perplexity_api(query: str) -> Optional[Dict[str, Any]]:
                     "role": "system",
                     "content": """You are a helpful AI assistant that provides accurate, well-researched answers using web sources.
 
-**CITATION REQUIREMENTS (MANDATORY):**
+**MANDATORY CITATION RULES:**
 
-1. **Inline Citations**: Use numbered citations [1], [2], [3] immediately after each claim or fact
-   - Place citation numbers right after the relevant sentence or claim
-   - Multiple sources for one claim: [1][2] or [1, 2]
-   - Example: "The Eiffel Tower was completed in 1889 [1]. It stands 324 meters tall [2]."
+1. **Inline Citations**: Use numbered citations [1], [2], [3] immediately after each claim
+   - Example: "Python was created in 1991 [1]. It emphasizes code readability [2]."
 
-2. **Source List**: Always end your response with a "Sources:" section containing:
-   - Formatted as clickable links with source titles/domains
-   - Format: [1] [Title or Domain Name](full_url)
-   - Extract meaningful titles from the URL or use the domain name
-   - Make links user-friendly and clean
+2. **Sources Section**: End response with clickable markdown links
+   Format: [1] [Website Name](full_url)
+   Examples: [1] [OpenAI](https://openai.com) [2] [Wikipedia](https://en.wikipedia.org/wiki/Topic)
 
-3. **Citation Format Example**:
-```
-   The Python programming language was created by Guido van Rossum [1]. 
-   It was first released in 1991 [2]. Python emphasizes code readability 
-   and uses significant indentation [1][3].
+3. **Rules**:
+   - Cite every factual claim, statistic, and quote
+   - Use authoritative sources
+   - Keep display text concise (2-5 words)
+   - Reuse citation numbers for the same source
+   - NO inline citations without a Sources section
+
+4. **Response Template**:
+   [Your answer with inline citations [1][2][3]]
    
    Sources:
-   [1] [Python.org - About](https://www.python.org/about/)
-   [2] [Wikipedia - Python Programming](https://en.wikipedia.org/wiki/Python_(programming_language))
-   [3] [Python Documentation](https://docs.python.org/3/tutorial/)
-```
+   [1] [Source Name](url)
+   [2] [Source Name](url)
+   [3] [Source Name](url)
 
-4. **Source Link Formatting Rules**:
-   - Use markdown link format: [Display Text](URL)
-   - Display text should be the website name or article title
-   - Keep display text concise (2-5 words max)
-   - Examples:
-     * [OpenAI Research](https://openai.com/research)
-     * [Nature Journal](https://www.nature.com/articles/xyz)
-     * [TechCrunch](https://techcrunch.com/article)
-     * [GitHub Docs](https://docs.github.com)
-
-5. **Best Practices**:
-   - Cite every factual claim, statistic, or quote
-   - Use the most authoritative and recent sources
-   - Make source links clean and clickable
-   - Number citations sequentially [1], [2], [3]...
-   - If multiple facts come from the same source, reuse the citation number
-
-6. **Response Structure**:
-   [Your answer with inline citations [1][2]]
-   
-   Sources:
-   [1] [Readable Source Name](https://full-url.com)
-   [2] [Another Source Name](https://another-url.com)
-
-**CRITICAL**: Every response MUST include:
-- Inline citations [1][2] after each claim
-- A Sources section with clickable markdown links [Display](URL)
-- Clean, readable source names (not raw URLs)
-
-Be factual, concise, and avoid speculation. Always ground your answers in the sources you cite.
+Be factual, concise, and ground all answers in cited sources.
 """
                 },
                 {
@@ -191,26 +161,38 @@ def grounding(query: str) -> str:
         # Add numbered web sources/citations if available
         if citations:
             response_parts.append("")
-            response_parts.append("� Sources:")
+            response_parts.append("📚 Sources:")
             for i, citation in enumerate(citations, 1):
-                # Extract domain/title and make it a clickable link
+                # Ensure proper markdown link format: [text](url)
                 if citation.startswith('http'):
-                    # If citation is a URL, extract domain
+                    # URL only - extract domain as display text
                     from urllib.parse import urlparse
                     parsed = urlparse(citation)
                     domain = parsed.netloc.replace('www.', '')
-                    response_parts.append(f"• [{domain}]({citation})")
+                    response_parts.append(f"[{i}] [{domain}]({citation})")
+                elif '|' in citation:
+                    # Format: "Title|URL" - convert to markdown
+                    title, url = citation.split('|', 1)
+                    response_parts.append(f"[{i}] [{title.strip()}]({url.strip()})")
                 elif ' - ' in citation and 'http' in citation:
                     # Format: "Title - URL"
-                    parts = citation.rsplit(' - ', 1)
-                    if len(parts) == 2:
-                        title, url = parts
-                        response_parts.append(f"• [{title}]({url.strip()})")
-                    else:
-                        response_parts.append(f"• {citation}")
+                    title, url = citation.rsplit(' - ', 1)
+                    response_parts.append(f"[{i}] [{title.strip()}]({url.strip()})")
+                elif citation.startswith('[') and '](' in citation:
+                    # Already in markdown format
+                    response_parts.append(f"[{i}] {citation}")
                 else:
-                    # Already formatted or plain text
-                    response_parts.append(f"• {citation}")
+                    # Plain text - try to make it a link if it contains URL
+                    if 'http' in citation:
+                        parts = citation.split()
+                        url = [p for p in parts if p.startswith('http')]
+                        if url:
+                            text = citation.replace(url[0], '').strip()
+                            response_parts.append(f"[{i}] [{text or 'Source'}]({url[0]})")
+                        else:
+                            response_parts.append(f"[{i}] {citation}")
+                    else:
+                        response_parts.append(f"[{i}] {citation}")
         
         final_response = "\n".join(response_parts)
         logger.info("Grounding completed successfully!")
