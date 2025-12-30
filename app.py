@@ -241,7 +241,7 @@ with st.sidebar:
                 
                 if success:
                     st.success("✅ Processed!")
-                    st.balloons()
+                    # st.balloons()
                     logger.info(f"SUCCESS: File processed successfully - {uploaded_file.name}")
                 else:
                     if final_container == "rejected":
