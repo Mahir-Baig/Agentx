@@ -1,4 +1,4 @@
-azure-storage-blob 
+azure-storage-blob
 azure-identity
 azure-cognitiveservices-speech
 langchain-openai
@@ -25,4 +25,3 @@ fastapi
 uvicorn
 streamlit
 streamlit-mic-recorder
--e .

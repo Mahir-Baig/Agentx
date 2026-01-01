@@ -1,0 +1,35 @@
+Metadata-Version: 2.4
+Name: AgentX
+Version: 0.0.1
+Summary: This project implements an agent with a RAG-first workflow that prioritizes an internal knowledge base and grounding via the Perplexity API. It supports both text-based and speech-based (STT) user prompts and can read generated responses aloud using text-to-speech (TTS).
+Author: Mahir Baig
+Requires-Dist: azure-storage-blob
+Requires-Dist: azure-identity
+Requires-Dist: azure-cognitiveservices-speech
+Requires-Dist: langchain-openai
+Requires-Dist: pandas
+Requires-Dist: langchain-text-splitters
+Requires-Dist: pytz
+Requires-Dist: pymupdf
+Requires-Dist: pypdf
+Requires-Dist: pyYAML
+Requires-Dist: langchain-unstructured
+Requires-Dist: tiktoken
+Requires-Dist: langchain
+Requires-Dist: langchain-core
+Requires-Dist: langchain-community
+Requires-Dist: langgraph
+Requires-Dist: langsmith
+Requires-Dist: python-dotenv
+Requires-Dist: chromadb
+Requires-Dist: groq
+Requires-Dist: google.genai
+Requires-Dist: azure-cognitiveservices-speech
+Requires-Dist: requests
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: streamlit
+Requires-Dist: streamlit-mic-recorder
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: summary
