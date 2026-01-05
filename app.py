@@ -690,38 +690,52 @@ else:
                             logger.error(f"TTS failed: {msg}")
                             st.error(f"{msg}")
 
-# Voice input section
-st.divider()
-
+# 1. Text Input Section - Rendered first
 user_query = None
 
-# Browser-compatible audio input (works in deployment)
-st.markdown("### 🎤 Voice Input")
-audio_bytes = st.audio_input("Click to record your voice", key="audio_recorder")
+def submit_text():
+    st.session_state.query_to_process = st.session_state.widget_input
+    st.session_state.widget_input = ""
 
+if "query_to_process" not in st.session_state:
+    st.session_state.query_to_process = None
+
+# Text input bar
+st.text_input("Message", key="widget_input", on_change=submit_text, 
+              label_visibility="collapsed", placeholder="Type your message...")
+
+# 2. Voice Input Section - Rendered below text input
+audio_bytes = st.audio_input("Voice Input", key="audio_recorder")
+
+# Check for text submission
+if st.session_state.query_to_process:
+    user_query = st.session_state.query_to_process
+    st.session_state.query_to_process = None # Reset
+
+# Check for audio submission
 if audio_bytes:
-    logger.info(f"Audio received: {len(audio_bytes.getvalue())} bytes")
-    
-    with st.spinner("Processing your voice..."):
-        # Use browser STT service
-        success, text = st.session_state.browser_stt_service.recognize_from_file(audio_bytes)
+    # Prevent re-processing the same audio
+    if "last_audio_id" not in st.session_state:
+        st.session_state.last_audio_id = None
         
-        if success:
-            logger.info(f"STT SUCCESS: {text}")
-            user_query = text
-            st.success(f"✅ You said: **{text}**")
-        else:
-            logger.error(f"STT FAILED: {text}")
-            st.error(f"❌ {text}")
-
-st.divider()
-
-# Text input
-if user_query is None:
-    text_input = st.chat_input("Type your message or use 🎤 microphone above...")
-    if text_input:
-        user_query = text_input
-        logger.info(f"Text input received: '{text_input[:50]}...'")
+    # Create unique ID for this audio
+    current_audio_id = f"{len(audio_bytes.getvalue())}_{audio_bytes.getvalue()[:10]}"
+    
+    if current_audio_id != st.session_state.last_audio_id:
+        st.session_state.last_audio_id = current_audio_id
+        logger.info(f"Audio received: {len(audio_bytes.getvalue())} bytes")
+        
+        with st.spinner("Processing your voice..."):
+            # Use browser STT service
+            success, text = st.session_state.browser_stt_service.recognize_from_file(audio_bytes)
+            
+            if success:
+                logger.info(f"STT SUCCESS: {text}")
+                user_query = text
+                st.success(f"✅ You said: **{text}**")
+            else:
+                logger.error(f"STT FAILED: {text}")
+                st.error(f"❌ {text}")
 
 # Process user query with STREAMING - FIXED
 if user_query:
