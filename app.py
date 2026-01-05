@@ -833,7 +833,7 @@ if user_query:
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.85rem; padding: 1rem;">
-    <p>Made with ❤️ by Mahir Baig | AgentX v0.0.1</p>
-    <p>Session ID: <code>{}</code></p>
+    <p>AgentX v0.0.1</p>
+    <p>Thread ID: <code>{}</code></p>
 </div>
 """.format(st.session_state.thread_id[:12] + "..."), unsafe_allow_html=True)

@@ -337,18 +337,6 @@ streamlit run app.py
 docker build -t agentx-api .
 docker run -p 8000:8000 --env-file .env agentx-api
 ```
-
-### Azure Container Apps
-```bash
-az acr build --registry <your-acr> --image agentx:v1 .
-az containerapp create \
-  --name agentx-api \
-  --resource-group <your-rg> \
-  --image <your-acr>.azurecr.io/agentx:v1
-```
-
----
-
 ## Dependencies
 
 - **LangChain** - LLM orchestration
@@ -360,32 +348,6 @@ az containerapp create \
 - **Perplexity API** - Web search
 
 See `requirements.txt` for full list.
-
----
-
-## FAQ
-
-**Q: Can I use OpenAI API directly?**  
-A: Yes, modify `llm_service.py` to use OpenAI instead of Azure OpenAI.
-
-**Q: How much does it cost?**  
-A: ~$17-30 per 1000 queries (GPT-4-mini + embeddings + storage).
-
-**Q: Can I run offline?**  
-A: No, requires Azure services. Use Ollama + local embeddings for offline.
-
-**Q: How many documents?**  
-A: ChromaDB scales to millions. Local: 10K-100K, Cloud: 100K-1M+.
-
----
-
-## Resources
-
-- **LangChain:** https://python.langchain.com/
-- **ChromaDB:** https://docs.trychroma.com/
-- **Azure OpenAI:** https://azure.microsoft.com/en-us/products/ai-services/openai-service/
-- **GitHub Issues:** https://github.com/Mahir-Baig/Agentx/issues
-
 ---
 
 ## License
