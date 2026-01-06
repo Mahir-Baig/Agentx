@@ -44,6 +44,8 @@ class BrowserSTTService:
             Tuple of (success: bool, text: str)
         """
         try:
+            import wave
+            
             if not self.speech_config:
                 return False, "Set SPEECH_KEY and SPEECH_ENDPOINT"
             
@@ -52,8 +54,37 @@ class BrowserSTTService:
             
             logger.info(f"Processing audio bytes: {len(audio_bytes)} bytes")
             
-            # Create audio stream from bytes
-            audio_stream = speechsdk.audio.PushAudioInputStream()
+            # Parse WAV header to get correct format
+            raw_data = None
+            sample_rate = 16000
+            channels = 1
+            bits_per_sample = 16
+            
+            try:
+                with io.BytesIO(audio_bytes) as wav_buffer:
+                    with wave.open(wav_buffer, 'rb') as wav_file:
+                        channels = wav_file.getnchannels()
+                        sample_rate = wav_file.getframerate()
+                        bits_per_sample = wav_file.getsampwidth() * 8
+                        num_frames = wav_file.getnframes()
+                        raw_data = wav_file.readframes(num_frames)
+                        
+                logger.info(f"WAV Format: {sample_rate}Hz, {channels}ch, {bits_per_sample}bit")
+                
+            except Exception as e:
+                logger.warning(f"Failed to parse WAV header: {e}. Trying raw upload.")
+                # Fallback to treating as raw PCM if parsing fails (unlikely for valid WAV)
+                raw_data = audio_bytes
+                
+            # Configure audio stream format based on WAV properties
+            stream_format = speechsdk.audio.AudioStreamFormat(
+                samples_per_second=sample_rate,
+                bits_per_sample=bits_per_sample,
+                channels=channels
+            )
+            
+            # Create audio stream
+            audio_stream = speechsdk.audio.PushAudioInputStream(stream_format=stream_format)
             audio_config = speechsdk.audio.AudioConfig(stream=audio_stream)
             
             # Create recognizer
@@ -63,7 +94,7 @@ class BrowserSTTService:
             )
             
             # Push audio data to stream
-            audio_stream.write(audio_bytes)
+            audio_stream.write(raw_data)
             audio_stream.close()
             
             # Recognize
