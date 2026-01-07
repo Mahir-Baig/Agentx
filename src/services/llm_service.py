@@ -1,7 +1,4 @@
 from langchain_openai import AzureChatOpenAI
-import warnings
-# Suppress the Google Generative AI deprecation warning
-warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
 import google.genai as genai
 from groq import Groq
 from langsmith import traceable
@@ -26,24 +23,20 @@ class LLMService:
         logger.info("Initializing LLM Service")
         logger.info("="*80)
         
-        # Azure OpenAI configuration
         self.azure_client = None
         self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         self.azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         self.azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
         self.azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4.1-mini")
         
-        # Groq configuration
         self.groq_client = None
         self.groq_api_key = os.getenv("GROQ_API_KEY")
         
-        # Gemini configuration
         self.gemini_api_key = os.getenv("GEMINI_API_KEY")
         
-        # Initialize clients
         self._init_azure_client()
         self._init_groq_client()
-        # self._init_gemini_client()
+        self._init_gemini_client()
         
         logger.info("✓ LLM Service initialization completed")
         logger.info("="*80)
@@ -109,7 +102,6 @@ class LLMService:
             if not self.azure_client:
                 raise ValueError("Azure OpenAI client not initialized")
             
-            # Use deployment from environment if model not specified
             if model is None:
                 model = self.azure_deployment
             
@@ -122,12 +114,10 @@ class LLMService:
             logger.info(f"Messages count: {len(messages)}")
             logger.info(f"Stream: {stream}")
             
-            # Log messages (truncated for privacy)
             for i, msg in enumerate(messages):
                 content_preview = msg.get('content', '')[:100]
                 logger.info(f"Message {i+1} ({msg.get('role', 'unknown')}): {content_preview}...")
             
-            # Convert messages to LangChain format
             from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
             
             langchain_messages = []
@@ -142,7 +132,6 @@ class LLMService:
                 elif role == 'assistant':
                     langchain_messages.append(AIMessage(content=content))
             
-            # Create a new client instance with the specified model if different from default
             if model != self.azure_deployment:
                 client = AzureChatOpenAI(
                     azure_endpoint=self.azure_endpoint,
@@ -153,7 +142,6 @@ class LLMService:
                     max_tokens=max_tokens
                 )
             else:
-                # Use existing client with updated parameters
                 client = AzureChatOpenAI(
                     azure_endpoint=self.azure_endpoint,
                     api_key=self.azure_api_key,
@@ -163,7 +151,6 @@ class LLMService:
                     max_tokens=max_tokens
                 )
             
-            # Generate response
             if stream:
                 response = client.stream(langchain_messages)
                 logger.info("✓ Streaming response initiated")
@@ -222,7 +209,6 @@ class LLMService:
             logger.info(f"Messages count: {len(messages)}")
             logger.info(f"Stream: {stream}")
             
-            # Log messages (truncated for privacy)
             for i, msg in enumerate(messages):
                 content_preview = msg.get('content', '')[:100]
                 logger.info(f"Message {i+1} ({msg.get('role', 'unknown')}): {content_preview}...")
@@ -290,24 +276,19 @@ class LLMService:
             logger.info(f"Max tokens: {max_tokens}")
             logger.info(f"Messages count: {len(messages)}")
             
-            # Log messages (truncated for privacy)
             for i, msg in enumerate(messages):
                 content_preview = msg.get('content', '')[:100]
                 logger.info(f"Message {i+1} ({msg.get('role', 'unknown')}): {content_preview}...")
             
-            # Convert messages to Gemini format
             gemini_messages = self._convert_to_gemini_format(messages)
             
-            # Initialize model
             gemini_model = genai.GenerativeModel(model)
             
-            # Configure generation
             generation_config = genai.types.GenerationConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens
             )
             
-            # Generate response
             response = gemini_model.generate_content(
                 gemini_messages,
                 generation_config=generation_config
@@ -315,7 +296,6 @@ class LLMService:
             
             content = response.text
             
-            # Extract usage information if available
             usage_metadata = getattr(response, 'usage_metadata', None)
             usage = {
                 "prompt_tokens": getattr(usage_metadata, 'prompt_token_count', 0) if usage_metadata else 0,

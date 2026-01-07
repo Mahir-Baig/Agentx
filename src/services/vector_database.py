@@ -40,11 +40,8 @@ class ChromaDBManager:
         self.persist_directory = persist_directory
         
         try:
-            # Create persist directory if it doesn't exist
             os.makedirs(persist_directory, exist_ok=True)
             logger.info(f"✓ Persist directory ready: {persist_directory}")
-            
-            # Initialize ChromaDB client with persistence
             self.client = chromadb.PersistentClient(
                 path=persist_directory,
                 settings=Settings(
@@ -54,7 +51,6 @@ class ChromaDBManager:
             )
             logger.info("✓ ChromaDB client initialized")
             
-            # Get or create collection
             if reset_collection:
                 try:
                     self.client.delete_collection(name=collection_name)
@@ -67,7 +63,6 @@ class ChromaDBManager:
                 metadata={"description": "RAG Agent document embeddings with file tracking"}
             )
             
-            # Get collection stats
             count = self.collection.count()
             logger.info(f"✓ Collection ready: {collection_name} (current size: {count} documents)")
             logger.info("="*80)
@@ -85,7 +80,6 @@ class ChromaDBManager:
         :param chunk_index: Index of the chunk in the document.
         :return: Unique document ID.
         """
-        # Create unique ID based on source file and chunk index
         unique_string = f"{source}_{chunk_index}_{text[:100]}"
         return hashlib.md5(unique_string.encode()).hexdigest()
     
@@ -98,23 +92,18 @@ class ChromaDBManager:
         """
         metadata = document.metadata.copy() if hasattr(document, 'metadata') else {}
         
-        # Add timestamp
         metadata['indexed_at'] = datetime.now().isoformat()
         
-        # Add text statistics
         metadata['text_length'] = len(document.page_content)
         
-        # Ensure source is present
         if 'source' not in metadata:
             metadata['source'] = 'unknown'
         
-        # Normalize source path
         if 'source' in metadata:
             metadata['source'] = os.path.normpath(metadata['source'])
             metadata['source_filename'] = os.path.basename(metadata['source'])
             metadata['source_extension'] = os.path.splitext(metadata['source'])[1]
         
-        # Convert all values to strings for ChromaDB compatibility
         for key, value in metadata.items():
             if not isinstance(value, (str, int, float, bool)):
                 metadata[key] = str(value)
@@ -151,7 +140,6 @@ class ChromaDBManager:
             total_added = 0
             source_files = set()
             
-            # Process in batches
             for i in range(0, len(documents), batch_size):
                 batch_docs = documents[i:i + batch_size]
                 batch_embeddings = embeddings[i:i + batch_size]
@@ -162,11 +150,9 @@ class ChromaDBManager:
                 batch_embeddings_list = []
                 
                 for j, (doc, embedding) in enumerate(zip(batch_docs, batch_embeddings)):
-                    # Extract metadata
                     metadata = self._extract_metadata(doc)
                     source_files.add(metadata.get('source', 'unknown'))
                     
-                    # Generate unique ID
                     doc_id = self._generate_doc_id(
                         doc.page_content,
                         metadata.get('source', 'unknown'),
@@ -178,7 +164,6 @@ class ChromaDBManager:
                     metadatas.append(metadata)
                     batch_embeddings_list.append(embedding)
                 
-                # Add to collection
                 self.collection.add(
                     ids=ids,
                     embeddings=batch_embeddings_list,
@@ -264,7 +249,6 @@ class ChromaDBManager:
                 logger.info("="*80)
                 return 0
             
-            # Delete the documents
             self.collection.delete(
                 ids=results['ids']
             )
@@ -311,7 +295,6 @@ class ChromaDBManager:
             logger.info("="*80)
             logger.info(f"Active folder: {active_folder}")
             
-            # Get all unique sources in the database
             all_docs = self.collection.get()
             db_sources = set()
             
@@ -323,14 +306,12 @@ class ChromaDBManager:
             
             logger.info(f"Found {len(db_sources)} unique source files in database")
             
-            # Check which files still exist
             missing_files = []
             for source in db_sources:
                 if not os.path.exists(source):
                     missing_files.append(source)
                     logger.info(f"⚠ File no longer exists: {source}")
             
-            # Delete embeddings for missing files
             deleted_count = 0
             if missing_files:
                 logger.info(f"Deleting embeddings for {len(missing_files)} missing files")
@@ -369,7 +350,6 @@ class ChromaDBManager:
         try:
             count = self.collection.count()
             
-            # Get all documents to analyze
             all_docs = self.collection.get()
             
             sources = set()
@@ -450,7 +430,6 @@ class ChromaDBManager:
             
             count_before = self.collection.count()
             
-            # Delete the collection and recreate it
             self.client.delete_collection(name=self.collection_name)
             self.collection = self.client.create_collection(
                 name=self.collection_name,

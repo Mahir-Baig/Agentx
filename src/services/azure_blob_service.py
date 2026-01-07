@@ -148,45 +148,7 @@ class AzureBlobManager:
             logger.error(f"Failed to download multiple files from {container_name}/{blob_name}: {e}")
             raise RagException(f"Failed to download multiple files from {container_name}/{blob_name}", sys)
 
-    # # ... ex
-    # @log_execution_time
-    # def download_allfiles_in_blob(self, container_name, download_dir, blob_name):
-    #     if not self.container_exists(container_name):
-    #         logger.error(f"Container {container_name} does not exist")
-    #         raise RagException(f"Container {container_name} does not exist", sys)
-        
-    #     logger.info(f"Starting download of files from {container_name}/{blob_name} to {download_dir}")
-    #     try:
-    #         # os.makedirs(download_dir, exist_ok=True)
-    #         # logger.info(f"Created download directory: {download_dir}")
-            
-    #         container_client = self.storage_account_client.get_container_client(container_name)
-    #         blobs = container_client.list_blobs(name_starts_with=blob_name)
-    #         blob_with_filenames = []
-            
-    #         download_count = 0  # Counter for downloaded files
-            
-    #         for blob in blobs:
-    #             blob_client = container_client.get_blob_client(blob.name)
-    #             blob_with_filenames.append(blob.name)
-    #             blob_download_path = os.path.join(download_dir,blob.name)
-    #             os.makedirs(os.path.dirname(blob_download_path), exist_ok=True)
-    #             logger.info(f"Created directory for blob: {os.path.dirname(blob_download_path)}")
-                
-    #             with open(blob_download_path, "wb") as download_file:
-    #                 download_file.write(blob_client.download_blob().readall())
-    #             logger.info(f"Downloaded {blob.name} to {blob_download_path}")
-                
-    #             download_count += 1  # Increment counter for each downloaded file
-            
-    #         logger.info(f"Total number of files downloaded: {download_count}")
-    #         download_path = os.path.dirname(blob_download_path)
-    #         logger.info(f"downloaded path :{download_path}")
-    #         return download_path,blob_with_filenames
-    #     except Exception as e:
-    #         logger.error(f"Failed to download multiple files from {container_name}/{blob_name}: {e}")
-    #         raise RagException(f"Failed to download multiple files from {container_name}/{blob_name}", sys)
-
+    
     # @log_execution_time
     def upload_files(self, container_name, folder_path, blob_name):
         logger.info(f"Starting upload of files from {folder_path} to {container_name}/{blob_name}")

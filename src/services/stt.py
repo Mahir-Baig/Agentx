@@ -32,7 +32,6 @@ class SpeechToTextService:
             self.speech_config.speech_recognition_language = "en-US"
             logger.info("Speech-to-Text initialized")
         
-        # For continuous recognition
         self.recognizer: Optional[speechsdk.SpeechRecognizer] = None
         self.recognized_text = []
         self.is_recognizing = False
@@ -49,7 +48,6 @@ class SpeechToTextService:
             if not self.speech_config:
                 return False, "Set SPEECH_KEY and SPEECH_ENDPOINT"
             
-            # Use default microphone
             audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
             speech_recognizer = speechsdk.SpeechRecognizer(
                 speech_config=self.speech_config,
@@ -95,18 +93,15 @@ class SpeechToTextService:
             if self.is_recognizing:
                 return False, "Already recording"
             
-            # Reset state
             self.recognized_text = []
             self.recognition_done.clear()
             
-            # Use default microphone
             audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
             self.recognizer = speechsdk.SpeechRecognizer(
                 speech_config=self.speech_config,
                 audio_config=audio_config
             )
             
-            # Connect callbacks
             def recognized_cb(evt):
                 if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
                     self.recognized_text.append(evt.result.text)
@@ -121,7 +116,6 @@ class SpeechToTextService:
             self.recognizer.session_stopped.connect(stopped_cb)
             self.recognizer.canceled.connect(stopped_cb)
             
-            # Start continuous recognition
             self.recognizer.start_continuous_recognition_async()
             self.is_recognizing = True
             
@@ -144,13 +138,10 @@ class SpeechToTextService:
             if not self.is_recognizing or not self.recognizer:
                 return False, "Not recording"
             
-            # Stop recognition
             self.recognizer.stop_continuous_recognition_async()
             
-            # Wait for it to complete (with timeout)
             self.recognition_done.wait(timeout=2.0)
             
-            # Combine all recognized text
             full_text = " ".join(self.recognized_text).strip()
             
             if full_text:

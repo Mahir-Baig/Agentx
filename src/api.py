@@ -32,14 +32,12 @@ async def query(
     ```
     """
     try:
-        # Validate query
         if not query or not query.strip():
             return JSONResponse(
                 status_code=400,
                 content={"success": False, "error": "Query cannot be empty"}
             )
         
-        # Call the agent service
         result = query_rag_agent(query=query, thread_id=thread_id, include_metadata=False)
         
         return JSONResponse(content=result)

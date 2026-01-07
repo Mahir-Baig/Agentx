@@ -39,25 +39,25 @@ class TextChunker:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         
-        # Default separators for better document structure preservation
+        
         if separators is None:
             separators = [
-                "\n\n",  # Double newline (paragraphs)
-                "\n",    # Single newline
-                ". ",    # Sentences
-                ", ",    # Clauses
-                " ",     # Words
-                ""       # Characters
+                "\n\n",  
+                "\n",    
+                ". ",    
+                ", ",    
+                " ",     
+                ""       
             ]
         
         try:
-            # Initialize RecursiveCharacterTextSplitter
+            
             self.text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap,
                 length_function=length_function,
                 separators=separators,
-                keep_separator=True  # Keep separators to maintain context
+                keep_separator=True  
             )
             
             logger.info("✓ RecursiveCharacterTextSplitter initialized successfully")
@@ -86,33 +86,33 @@ class TextChunker:
             logger.info("="*80)
             logger.info(f"Input: {len(documents)} documents")
             
-            # Track statistics
+           
             total_input_chars = 0
             total_chunks = 0
             source_files = set()
             
-            # Process all documents
+            
             chunked_docs = []
             
             for i, doc in enumerate(documents):
                 content_length = len(doc.page_content)
                 total_input_chars += content_length
                 
-                # Extract source info for logging
+                
                 source = doc.metadata.get('source', f'document_{i}')
                 source_files.add(source)
                 
                 logger.info(f"Processing document {i+1}/{len(documents)}: {os.path.basename(source)}")
                 logger.info(f"  Content length: {content_length:,} characters")
                 
-                # Split the document
+                
                 doc_chunks = self.text_splitter.split_documents([doc])
                 chunked_docs.extend(doc_chunks)
                 
                 logger.info(f"  Generated chunks: {len(doc_chunks)}")
                 total_chunks += len(doc_chunks)
                 
-                # Log chunk size distribution for this document
+                
                 if doc_chunks:
                     chunk_sizes = [len(chunk.page_content) for chunk in doc_chunks]
                     avg_chunk_size = sum(chunk_sizes) / len(chunk_sizes)
@@ -121,7 +121,7 @@ class TextChunker:
                     
                     logger.info(f"  Chunk sizes - Avg: {avg_chunk_size:.0f}, Min: {min_chunk_size}, Max: {max_chunk_size}")
             
-            # Overall statistics
+            
             avg_chars_per_chunk = total_input_chars / total_chunks if total_chunks > 0 else 0
             compression_ratio = total_chunks / len(documents) if documents else 0
             
@@ -159,13 +159,13 @@ class TextChunker:
             
             logger.info(f"Chunking text ({len(text):,} characters)")
             
-            # Create a temporary document
+            
             if metadata is None:
                 metadata = {}
             
             temp_doc = Document(page_content=text, metadata=metadata)
             
-            # Use the document chunking method
+            
             chunked_docs = self.chunk_documents([temp_doc])
             
             logger.info(f"✓ Text split into {len(chunked_docs)} chunks")
@@ -237,7 +237,7 @@ class TextChunker:
                 self.chunk_overlap = new_overlap
                 logger.info(f"Updating overlap from {self.chunk_overlap} to {new_overlap}")
             
-            # Reinitialize splitter with new parameters
+            
             self.text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=self.chunk_size,
                 chunk_overlap=self.chunk_overlap,

@@ -54,7 +54,6 @@ class BrowserSTTService:
             
             logger.info(f"Processing audio bytes: {len(audio_bytes)} bytes")
             
-            # Parse WAV header to get correct format
             raw_data = None
             sample_rate = 16000
             channels = 1
@@ -73,31 +72,25 @@ class BrowserSTTService:
                 
             except Exception as e:
                 logger.warning(f"Failed to parse WAV header: {e}. Trying raw upload.")
-                # Fallback to treating as raw PCM if parsing fails (unlikely for valid WAV)
                 raw_data = audio_bytes
                 
-            # Configure audio stream format based on WAV properties
             stream_format = speechsdk.audio.AudioStreamFormat(
                 samples_per_second=sample_rate,
                 bits_per_sample=bits_per_sample,
                 channels=channels
             )
             
-            # Create audio stream
             audio_stream = speechsdk.audio.PushAudioInputStream(stream_format=stream_format)
             audio_config = speechsdk.audio.AudioConfig(stream=audio_stream)
             
-            # Create recognizer
             speech_recognizer = speechsdk.SpeechRecognizer(
                 speech_config=self.speech_config,
                 audio_config=audio_config
             )
             
-            # Push audio data to stream
             audio_stream.write(raw_data)
             audio_stream.close()
             
-            # Recognize
             logger.info("Starting speech recognition...")
             result = speech_recognizer.recognize_once_async().get()
             
@@ -134,10 +127,8 @@ class BrowserSTTService:
             Tuple of (success: bool, text: str)
         """
         try:
-            # Read file content
             audio_bytes = audio_file.read()
             
-            # Reset file pointer if needed
             if hasattr(audio_file, 'seek'):
                 audio_file.seek(0)
             
@@ -148,7 +139,6 @@ class BrowserSTTService:
             return False, f"Error: {str(e)}"
 
 
-# Singleton
 _browser_stt_service = None
 
 def get_browser_stt_service() -> BrowserSTTService:

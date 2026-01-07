@@ -16,11 +16,8 @@ from src.tools.rag import rag
 from src.tools.grounding import grounding
 from src.logger import logger
 
-# Load environment variables
 load_dotenv()
 
-# LangSmith Configuration for tracing and monitoring
-# Reads from .env if available, otherwise uses defaults below
 os.environ["LANGCHAIN_TRACING_V2"] = os.getenv("LANGCHAIN_TRACING_V2", "true")
 os.environ["LANGCHAIN_ENDPOINT"] = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
 os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGCHAIN_API_KEY", "")
@@ -46,17 +43,14 @@ class LangGraphRAGAgent:
         """
         logger.info("Initializing LangGraph RAG Agent...")
         
-        # Initialize Azure OpenAI LLM
         self.llm = AzureChatOpenAI(
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-            deployment_name=model or os.getenv("AZURE_OPENAI_DEPLOYMENT"),  # Fixed: Use AZURE_OPENAI_DEPLOYMENT
+            deployment_name=model or os.getenv("AZURE_OPENAI_DEPLOYMENT"),
             temperature=0.1,
-            # max_tokens=2000
         )
         
-        # Define the system prompt - MUST encourage tool usage
         self.system_prompt = """You are an intelligent AI assistant with access to a RAG (Retrieval-Augmented Generation) system and web grounding capabilities.
 
 **CORE BEHAVIOR: CONTEXT-AWARE TOOL USAGE**
@@ -223,20 +217,16 @@ Tools Used: rag ✓
 
 Remember: You're equipped with powerful retrieval tools. Use them confidently to provide accurate, well-sourced answers!
 """
-        # Create the tools list
         self.tools = [rag, grounding]
         
-        # Initialize memory saver for conversation persistence
         self.memory = MemorySaver()
         logger.info("Memory saver initialized for conversation persistence")
         
-        # Create the agent using langchain.agents.create_agent with memory
-        # Latest API: create_agent(model, tools, system_prompt, checkpointer)
         self.agent = create_agent(
             model=self.llm,
             tools=self.tools,
             system_prompt=self.system_prompt,
-            checkpointer=self.memory  # Add memory for conversation history
+            checkpointer=self.memory
         )
         
         logger.info("LangGraph RAG Agent initialized successfully with memory")
@@ -255,23 +245,19 @@ Remember: You're equipped with powerful retrieval tools. Use them confidently to
             The agent's response as a string
         """
         try:
-            # Generate UUID if thread_id not provided
             if thread_id is None:
                 thread_id = str(uuid.uuid4())
                 logger.info(f"Generated new thread_id: {thread_id}")
             
             logger.info(f"Processing query: '{query}' [Thread: {thread_id}]")
             
-            # Invoke the agent with the query using the new API format with thread_id
             inputs = {"messages": [{"role": "user", "content": query}]}
             config = {"configurable": {"thread_id": thread_id}}
             
             result = self.agent.invoke(inputs, config=config)
             
-            # Extract the final response from messages
             messages = result.get("messages", [])
             if messages:
-                # Get the last message (AI response)
                 final_message = messages[-1]
                 if isinstance(final_message, dict):
                     response = final_message.get("content", str(final_message))
@@ -300,14 +286,12 @@ Remember: You're equipped with powerful retrieval tools. Use them confidently to
             Chunks of the agent's response as they are generated
         """
         try:
-            # Generate UUID if thread_id not provided
             if thread_id is None:
                 thread_id = str(uuid.uuid4())
                 logger.info(f"Generated new thread_id: {thread_id}")
             
             logger.info(f"Streaming response for query: '{query}' [Thread: {thread_id}]")
             
-            # Stream the agent's response with the new API format and thread_id
             inputs = {"messages": [{"role": "user", "content": query}]}
             config = {"configurable": {"thread_id": thread_id}}
             
@@ -329,7 +313,6 @@ Remember: You're equipped with powerful retrieval tools. Use them confidently to
             List of messages in the conversation
         """
         try:
-            # Get the state from memory
             config = {"configurable": {"thread_id": thread_id}}
             state = self.agent.get_state(config)
             return state.values.get("messages", [])
@@ -346,8 +329,6 @@ Remember: You're equipped with powerful retrieval tools. Use them confidently to
         """
         try:
             logger.info(f"Clearing conversation history [Thread: {thread_id}]")
-            # This will be implementation specific based on checkpointer
-            # For MemorySaver, we can't directly clear, but new thread_id will start fresh
             logger.info(f"To start a new conversation, use a different thread_id")
         except Exception as e:
             logger.error(f"Error clearing conversation history: {str(e)}")
@@ -366,15 +347,12 @@ def create_langgraph_agent(model: Optional[str] = None) -> LangGraphRAGAgent:
     return LangGraphRAGAgent(model=model)
 
 
-# Example usage
 if __name__ == "__main__":
-    # Create the agent
     agent = create_langgraph_agent()
     
-    # Test queries
     test_queries = [
-        # "what is job description",
-        # "What are the main responsibilities?",
+        "what is job description",
+        "What are the main responsibilities?",
         "who won the 2025 ICC women's world cup?",
     ]
     

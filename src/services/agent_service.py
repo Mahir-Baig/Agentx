@@ -10,7 +10,6 @@ from src.agents.agent import create_langgraph_agent
 from src.logger import logger
 
 
-# Global agent instance (singleton pattern)
 _agent_instance = None
 
 
@@ -71,14 +70,12 @@ def query_rag_agent(
         >>> print(result['thread_id'])  # Use this for follow-up queries
     """
     try:
-        # Generate UUID if thread_id not provided
         if thread_id is None:
             thread_id = str(uuid.uuid4())
             logger.info(f"Generated new thread_id: {thread_id}")
         
         logger.info(f"Received query: '{query}' [Thread: {thread_id}]")
         
-        # Validate input
         if not query or not query.strip():
             return {
                 "success": False,
@@ -88,13 +85,10 @@ def query_rag_agent(
                 "thread_id": thread_id
             }
         
-        # Get the agent instance
         agent = _get_agent(model=model)
         
-        # Process the query with thread_id for conversation memory
         response = agent.invoke(query, thread_id=thread_id)
         
-        # Prepare the result
         result = {
             "success": True,
             "query": query,
@@ -103,7 +97,6 @@ def query_rag_agent(
             "thread_id": thread_id
         }
         
-        # Add metadata if requested
         if include_metadata:
             result["metadata"] = {
                 "model": model or "default",
@@ -146,8 +139,6 @@ async def query_rag_agent_async(
     Returns:
         Dictionary with success, query, response, error, thread_id, and optional metadata
     """
-    # For now, we'll wrap the sync version
-    # In production, you might want to use asyncio.to_thread() for true async
     return query_rag_agent(query=query, model=model, include_metadata=include_metadata, thread_id=thread_id)
 
 
@@ -169,22 +160,18 @@ def stream_rag_agent(query: str, model: Optional[str] = None, thread_id: Optiona
         >>>     print(chunk, end='', flush=True)
     """
     try:
-        # Generate UUID if thread_id not provided
         if thread_id is None:
             thread_id = str(uuid.uuid4())
             logger.info(f"Generated new thread_id: {thread_id}")
         
         logger.info(f"Streaming response for query: '{query}' [Thread: {thread_id}]")
         
-        # Validate input
         if not query or not query.strip():
             yield {"error": "Query cannot be empty"}
             return
         
-        # Get the agent instance
         agent = _get_agent(model=model)
         
-        # Stream the response with thread_id
         for chunk in agent.stream(query, thread_id=thread_id):
             yield chunk
             
@@ -220,21 +207,20 @@ def get_agent_info() -> Dict[str, Any]:
         }
 
 
-# Example usage and testing
 if __name__ == "__main__":
     print("=" * 80)
     print("AGENT SERVICE DEMO WITH UUID-BASED CONVERSATION MEMORY")
     print("=" * 80)
     
-    # Test conversation with auto-generated UUID
+    
     print(f"\n🔗 Starting NEW conversation (UUID will be auto-generated)")
     print("=" * 80)
     
-    # First query - UUID auto-generated
+    
     print("\n📝 Query 1:what is the job description")
     print("-" * 80)
     result1 = query_rag_agent("what is the job description", include_metadata=True)
-    thread_id = result1["thread_id"]  # Save the thread_id for follow-up
+    thread_id = result1["thread_id"] 
     
     if result1["success"]:
         print(f"✅ Success!")

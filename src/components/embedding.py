@@ -33,7 +33,7 @@ class EmbeddingGenerator:
         """
         logger.info("Initializing EmbeddingGenerator")
         
-        # Get credentials from environment variables if not provided
+        
         self.azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
         self.api_key = api_key or os.getenv("AZURE_OPENAI_API_KEY")
         self.api_version = api_version or os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15")
@@ -43,7 +43,7 @@ class EmbeddingGenerator:
             raise ValueError("Azure OpenAI endpoint and API key must be provided or set in environment variables")
         
         try:
-            # Initialize Azure OpenAI Embeddings
+            
             self.embeddings = AzureOpenAIEmbeddings(
                 azure_endpoint=self.azure_endpoint,
                 api_key=self.api_key,
@@ -70,10 +70,10 @@ class EmbeddingGenerator:
             
             logger.info(f"Generating embeddings for {len(documents)} documents")
             
-            # Extract text content from documents
+            
             texts = [doc.page_content for doc in documents]
             
-            # Generate embeddings
+            
             embeddings = self.embeddings.embed_documents(texts)
             
             logger.info(f"Successfully generated {len(embeddings)} embeddings")

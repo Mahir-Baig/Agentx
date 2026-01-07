@@ -94,21 +94,17 @@ class TextToSpeechService:
             Tuple of (success: bool, audio_bytes: Optional[bytes], message: str)
         """
         try:
-            # Create temporary file
             with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp_file:
                 tmp_path = tmp_file.name
             
-            # Synthesize to file
             success, message = self.synthesize_to_file(text, tmp_path)
             
             if not success:
                 return False, None, message
             
-            # Read the audio bytes
             with open(tmp_path, 'rb') as f:
                 audio_bytes = f.read()
             
-            # Clean up
             try:
                 os.unlink(tmp_path)
             except:
@@ -121,7 +117,6 @@ class TextToSpeechService:
             return False, None, f"Error: {str(e)}"
 
 
-# Singleton instance
 _tts_service = None
 
 def get_tts_service() -> TextToSpeechService:

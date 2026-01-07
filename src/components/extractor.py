@@ -70,7 +70,7 @@ class DocumentExtractor:
             all_documents = []
             file_count = 0
             
-            # Walk through all subdirectories
+            
             for root, dirs, files in os.walk(folder_path):
                 for file in files:
                     file_path = os.path.join(root, file)

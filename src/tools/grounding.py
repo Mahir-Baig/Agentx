@@ -143,7 +143,7 @@ def grounding(query: str) -> str:
     try:
         logger.info(f"Grounding Tool: Processing query: '{query}'")
         
-        # Call Perplexity API
+        
         response = _call_perplexity_api(query)
         
         if not response:
@@ -156,21 +156,20 @@ def grounding(query: str) -> str:
         logger.info(f"✓ Found {len(citations)} citations")
         logger.info(f"Raw citations: {citations}")
         
-        # Format response with proper markdown links
+       
         response_parts = []
         response_parts.append("🌐 **Web Search Answer:**")
         response_parts.append("")
         response_parts.append(answer)
         
-        # Extract markdown links from answer (Perplexity should format them)
-        # Pattern: [Text](url)
+       
         markdown_links = re.findall(r'\[([^\[\]]+)\]\(https?://[^\)]+\)', answer)
         logger.info(f"Found {len(markdown_links)} markdown links in answer")
         
-        # Extract and format citations with fallback
+       
         formatted_sources = []
         
-        # PREFERRED: Extract markdown links directly from answer
+       
         sources_match = re.search(
             r'(?:Sources?:|📚.*?Sources?:)\s*((?:\[[^\]]+\]\([^\)]+\)[\r\n]*)+)',
             answer,
@@ -178,7 +177,7 @@ def grounding(query: str) -> str:
         )
         
         if sources_match:
-            # Markdown sources already in answer - extract them
+            
             sources_section = sources_match.group(1)
             source_links = re.findall(r'\[([^\[\]]+)\]\((https?://[^\)]+)\)', sources_section)
             
@@ -186,7 +185,7 @@ def grounding(query: str) -> str:
                 formatted_sources.append(f"[{i}] [{title}]({url})")
                 logger.info(f"Extracted markdown source {i}: [{title}]({url})")
             
-            # Remove the sources section from answer to avoid duplication
+            
             answer = re.sub(
                 r'\n*(?:Sources?:|📚.*?Sources?:)\s*(?:\[[^\]]+\]\([^\)]+\)[\r\n]*)+',
                 '',
@@ -194,15 +193,15 @@ def grounding(query: str) -> str:
                 flags=re.IGNORECASE | re.DOTALL
             ).strip()
         
-        # FALLBACK: Parse citations array if markdown extraction failed
+        
         if not formatted_sources and citations:
             logger.info("No markdown links found in answer, parsing citations array as fallback")
             for i, citation in enumerate(citations, 1):
                 source_link = None
                 
-                # Try multiple citation formats
+                
                 if isinstance(citation, dict):
-                    # If citation is a dict with url/title
+                    
                     url = citation.get('url') or citation.get('href') or citation.get('link')
                     title = citation.get('title') or citation.get('name')
                     if url:
@@ -210,14 +209,14 @@ def grounding(query: str) -> str:
                 
                 elif isinstance(citation, str):
                     if citation.startswith('http'):
-                        # Pure URL
+                        
                         from urllib.parse import urlparse
                         parsed = urlparse(citation)
                         domain = parsed.netloc.replace('www.', '')
                         source_link = f"[{i}] [{domain}]({citation})"
                     
                     elif '|' in citation:
-                        # Title|URL format
+                        
                         parts = citation.split('|', 1)
                         title = parts[0].strip()
                         url = parts[1].strip()
@@ -225,14 +224,14 @@ def grounding(query: str) -> str:
                             source_link = f"[{i}] [{title}]({url})"
                     
                     elif ' - ' in citation:
-                        # Title - URL format
+                        
                         parts = citation.rsplit(' - ', 1)
                         if len(parts) == 2 and parts[1].strip().startswith('http'):
                             title = parts[0].strip()
                             url = parts[1].strip()
                             source_link = f"[{i}] [{title}]({url})"
                     
-                    # Fallback: check if citation contains URL anywhere
+                    
                     if not source_link and 'http' in citation:
                         urls = re.findall(r'https?://[^\s\]]+', citation)
                         if urls:
@@ -244,11 +243,11 @@ def grounding(query: str) -> str:
                     formatted_sources.append(source_link)
                     logger.info(f"Formatted citation {i}: {source_link}")
                 else:
-                    # Last resort: use plain text with warning
+                    
                     logger.warning(f"Citation {i} has no URL: {citation}")
                     formatted_sources.append(f"[{i}] {citation}")
         
-        # Add sources section if we have them
+        
         if formatted_sources:
             response_parts.append("")
             response_parts.append("---")

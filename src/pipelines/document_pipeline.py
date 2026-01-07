@@ -16,9 +16,7 @@ from langsmith import traceable
 
 
 class DocumentPipeline:
-    """
-    Complete document processing pipeline with Azure Blob Storage integration
-    """
+   
     
     def __init__(self):
         """Initialize the pipeline components"""
@@ -27,7 +25,7 @@ class DocumentPipeline:
         self.chunker = TextChunker(chunk_size=1000, chunk_overlap=200)
         self.embedder = EmbeddingGenerator()
         
-        # ChromaDB configuration
+        
         chromadb_path = os.path.join(os.getcwd(), "data", "chromadb")
         self.db_manager = ChromaDBManager(
             persist_directory=chromadb_path,
@@ -52,7 +50,7 @@ class DocumentPipeline:
             logger.info(f"Checking if '{filename}' exists in accepted container")
             _, blob_files = self.blob_manager.list_blob_names_and_files("accepted")
             
-            # Check if filename exists (without any _duplicate suffix)
+            
             base_filename = filename.replace("_duplicate", "").strip()
             exists = any(base_filename in blob_file for blob_file in blob_files)
             
@@ -104,21 +102,21 @@ class DocumentPipeline:
         try:
             logger.info(f"Moving '{blob_name}' from '{source_container}' to '{dest_container}'")
             
-            # Get clients
+            
             source_client = self.blob_manager.storage_account_client.get_container_client(source_container)
             dest_client = self.blob_manager.storage_account_client.get_container_client(dest_container)
             
-            # Get source blob
+            
             source_blob = source_client.get_blob_client(blob_name)
             
-            # Determine destination name
+           
             dest_blob_name = new_blob_name if new_blob_name else blob_name
             dest_blob = dest_client.get_blob_client(dest_blob_name)
             
-            # Copy to destination
+            
             dest_blob.start_copy_from_url(source_blob.url)
             
-            # Delete from source
+            
             source_blob.delete_blob()
             
             logger.info(f"Successfully moved to {dest_container}/{dest_blob_name}")
@@ -143,24 +141,24 @@ class DocumentPipeline:
         try:
             logger.info(f"Starting RAG processing for: {file_path}")
             
-            # Step 1: Extract
+        
             logger.info("Step 1/4: Extracting text...")
             documents = self.extractor.extract_from_file(file_path)
             if not documents:
                 return False, "No content extracted from file", 0
             logger.info(f"Extracted {len(documents)} document(s)")
             
-            # Step 2: Chunk
+            
             logger.info("Step 2/4: Chunking text...")
             chunks = self.chunker.chunk_documents(documents)
             logger.info(f"Created {len(chunks)} chunks")
             
-            # Step 3: Embed
+            
             logger.info("Step 3/4: Generating embeddings...")
             embeddings = self.embedder.embed_documents(chunks)
             logger.info(f"Generated {len(embeddings)} embeddings")
             
-            # Step 4: Store
+            
             logger.info("Step 4/4: Storing in ChromaDB...")
             added_count = self.db_manager.add_documents(chunks, embeddings)
             logger.info(f"Stored {added_count} chunks in vector database")
@@ -197,24 +195,24 @@ class DocumentPipeline:
         logger.info(f"📥 Processing uploaded file: {filename}")
         
         try:
-            # Create temporary file
+            
             with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
                 tmp_file.write(file_content)
                 tmp_path = tmp_file.name
             
-            # Step 1: Upload to rawdata
+            
             logger.info("📤 Step 1: Uploading to rawdata container...")
             self.upload_to_blob(tmp_path, "rawdata", filename)
             
-            # Step 2: Check if file exists in accepted
+            
             logger.info("🔍 Step 2: Checking for duplicates in accepted container...")
             is_duplicate = self.check_file_exists_in_accepted(filename)
             
             if is_duplicate:
-                # Step 3a: Handle duplicate - move to rejected
+                
                 logger.info("⚠️  Duplicate detected!")
                 
-                # Add _duplicate suffix before extension
+                
                 name_without_ext = os.path.splitext(filename)[0]
                 duplicate_filename = f"{name_without_ext}_duplicate{file_ext}"
                 
@@ -226,22 +224,22 @@ class DocumentPipeline:
                     duplicate_filename
                 )
                 
-                # Clean up temp file
+                
                 os.unlink(tmp_path)
                 
                 return False, f"❌ Duplicate file detected! Moved to rejected container as '{duplicate_filename}'", "rejected"
             
             else:
-                # Step 3b: Handle new file - move to accepted
+                
                 logger.info("New file detected!")
                 logger.info("Moving to accepted container...")
                 self.move_blob_between_containers("rawdata", "accepted", filename)
                 
-                # Step 4: Process through RAG pipeline
+                
                 logger.info("🤖 Starting RAG processing...")
                 success, message, chunks_added = self.process_single_file(tmp_path)
                 
-                # Clean up temp file
+                
                 os.unlink(tmp_path)
                 
                 if success:
@@ -253,7 +251,7 @@ class DocumentPipeline:
             error_msg = f"❌ Error in pipeline: {str(e)}"
             logger.error(error_msg)
             
-            # Clean up temp file if exists
+            
             try:
                 if 'tmp_path' in locals():
                     os.unlink(tmp_path)

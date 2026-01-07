@@ -7,7 +7,6 @@ This tool performs Retrieval-Augmented Generation by:
 """
 
 import os
-from typing import Dict, List, Any
 from langchain_core.tools import tool
 from langsmith import traceable
 from src.components.embedding import EmbeddingGenerator
@@ -35,7 +34,7 @@ def rag(query: str) -> str:
     try:
         logger.info(f"RAG Tool: Processing query: '{query}'")
         
-        # Initialize components
+        
         embedder = EmbeddingGenerator()
         
         chromadb_path = os.path.join(os.getcwd(), "data", "chromadb")
@@ -46,12 +45,12 @@ def rag(query: str) -> str:
         
         llm_service = LLMService()
         
-        # Step 1: Generate query embedding
+        
         logger.info("Step 1: Generating query embedding...")
         query_embedding = embedder.embed_query(query)
         logger.info(f"✓ Query embedded (dimension: {len(query_embedding)})")
         
-        # Step 2: Search ChromaDB for top 3 chunks using cosine similarity
+        
         logger.info("Step 2: Searching ChromaDB for top 3 chunks (cosine similarity)...")
         results = db_manager.query(
             query_embedding=query_embedding,
@@ -59,39 +58,38 @@ def rag(query: str) -> str:
         )
         logger.info(f"✓ Retrieved {len(results.get('ids', []))} chunks")
         
-        # Extract results properly from ChromaDB format
+        
         if not results or not results.get('ids') or not results['ids'][0]:
             logger.warning("No relevant documents found")
             return "I couldn't find any relevant documents to answer your question. Please make sure documents are indexed in the database."
         
-        # Step 3: Format context and extract metadata
+        
         logger.info("Step 3: Formatting context...")
         context_parts = []
         citations = []
         seen_sources = set()
         
-        # Azure Blob Storage configuration for generating URLs
-        storage_account_name = "poc123"  # From connection string
-        container_name = "accepted"  # Documents are in accepted container
         
-        # ChromaDB returns results in lists
+        storage_account_name = "poc123"  
+        container_name = "accepted"  
+        
+        
         ids = results['ids'][0]
         documents = results['documents'][0]
         metadatas = results['metadatas'][0]
         distances = results.get('distances', [[]])[0]
         
         for i, (doc_id, text, metadata, distance) in enumerate(zip(ids, documents, metadatas, distances), 1):
-            # Extract document name from metadata
+            
             source_filename = metadata.get('source_filename', 'Unknown Document')
             source_path = metadata.get('source', 'Unknown Path')
             
-            # Format context with document reference
+            
             context_parts.append(f"[Document {i}: {source_filename}]\n{text}\n")
             
-            # Add to citations if not already seen
+            
             if source_filename not in seen_sources:
-                # Generate Azure Blob Storage URL
-                # Format: https://{account}.blob.core.windows.net/{container}/{filename}
+                
                 blob_url = f"https://{storage_account_name}.blob.core.windows.net/{container_name}/{source_filename}"
                 
                 citations.append({
@@ -105,7 +103,7 @@ def rag(query: str) -> str:
         context = "\n".join(context_parts)
         logger.info(f"✓ Context prepared with {len(citations)} unique sources")
         
-        # Step 4: Generate answer using Azure LLM
+        
         logger.info("Step 4: Generating answer with Azure LLM...")
         
         system_message = """You are a helpful AI assistant that answers questions based on the provided context.
@@ -133,14 +131,14 @@ Please provide a comprehensive answer based ONLY on the context above. Do not me
         
         llm_response = llm_service.azure_chat_completion(
             messages=messages,
-            temperature=0.1,  # Lower temperature for more factual responses
-            # max_tokens=500
+            temperature=0.1,  
+            
         )
         
         answer = llm_response.get('content', '')
         logger.info(f"✓ Answer generated ({len(answer)} characters)")
         
-        # Format final response with PREFIX to identify it's from RAG
+        
         response_parts = ["📖 **Knowledge Base Answer:**\n", answer]
         
         if citations:
@@ -149,7 +147,7 @@ Please provide a comprehensive answer based ONLY on the context above. Do not me
                 filename = citation['filename']
                 blob_url = citation['blob_url']
                 similarity = citation['similarity_score']
-                # Format as markdown link: [Display Text](URL)
+            
                 response_parts.append(f"• [{filename}]({blob_url}) (Similarity: {similarity})")
         
         final_response = "\n".join(response_parts)

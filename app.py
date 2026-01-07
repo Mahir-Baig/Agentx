@@ -16,7 +16,7 @@ from src.services.stt_browser import get_browser_stt_service
 from src.services.tts import get_tts_service
 from src.logger import logger
 
-# Page configuration
+
 st.set_page_config(
     page_title="AgentX",
     page_icon="🤖",
@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for modern dark theme
+
 st.markdown("""
 <style>
     /* Main background - dark gradient */
@@ -105,7 +105,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
+
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
     logger.info(f"New session started with thread_id: {st.session_state.thread_id}")
@@ -139,18 +139,18 @@ if "recording" not in st.session_state:
     st.session_state.recording = False
     logger.info("Recording state initialized")
 
-# Sidebar
+
 with st.sidebar:
     st.markdown("## 🤖 AgentX")
     st.markdown("Your AI Knowledge Assistant")
     
-    # Session info
+    
     st.markdown("### Thread ID")
     st.code(st.session_state.thread_id[:12] + "...", language="text")
     
     st.divider()
     
-    # Document upload
+    
     st.markdown("### 📄 Upload Document")
     uploaded_file = st.file_uploader(
         "Drop file here",
@@ -205,7 +205,7 @@ with st.sidebar:
     
     st.divider()
     
-    # Actions - Equal width buttons
+    
     col1, col2 = st.columns(2)
     
     with col1:
@@ -225,7 +225,7 @@ with st.sidebar:
     
     st.divider()
     
-    # Info footer
+   
     st.markdown("### ℹ️ How it works")
     st.markdown("""
     1. 📄 Upload documents
@@ -234,8 +234,7 @@ with st.sidebar:
     4. ✨ Get instant answers
     """)
 
-# Main chat area
-# Display welcome message if no messages
+
 if len(st.session_state.chat_history) == 0:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -256,13 +255,13 @@ if len(st.session_state.chat_history) == 0:
 else:
     logger.info(f"Displaying {len(st.session_state.chat_history)} messages")
     
-    # Display chat messages
+    
     for idx, message in enumerate(st.session_state.chat_history):
         with st.chat_message(message["role"]):
-            # Render markdown with unsafe_allow_html to support links
+            
             st.markdown(message["content"], unsafe_allow_html=True)
             
-            # Add "Read Aloud" button for assistant messages
+            
             if message["role"] == "assistant":
                 if st.button("🔊 Read Aloud", key=f"tts_{idx}"):
                     logger.info(f"TTS button clicked for message {idx}")
@@ -271,7 +270,7 @@ else:
                         success, audio_bytes, msg = st.session_state.tts_service.synthesize_to_bytes(message["content"])
                         if success and audio_bytes:
                             logger.info(f"TTS audio generated - Size: {len(audio_bytes)} bytes")
-                            # Encode audio to base64 for HTML audio player
+                            
                             audio_b64 = base64.b64encode(audio_bytes).decode()
                             audio_html = f"""
                                 <audio controls autoplay>
@@ -285,7 +284,7 @@ else:
                             logger.error(f"TTS failed: {msg}")
                             st.error(f"{msg}")
 
-# 1. Text Input Section - Rendered first
+
 user_query = None
 
 def submit_text():
@@ -295,25 +294,25 @@ def submit_text():
 if "query_to_process" not in st.session_state:
     st.session_state.query_to_process = None
 
-# Text input bar
+
 st.text_input("Message", key="widget_input", on_change=submit_text, 
               label_visibility="collapsed", placeholder="Type your message...")
 
-# 2. Voice Input Section - Rendered below text input
+
 audio_bytes = st.audio_input("Voice Input", key="audio_recorder")
 
-# Check for text submission
+
 if st.session_state.query_to_process:
     user_query = st.session_state.query_to_process
     st.session_state.query_to_process = None # Reset
 
-# Check for audio submission
+
 if audio_bytes:
-    # Prevent re-processing the same audio
+    
     if "last_audio_id" not in st.session_state:
         st.session_state.last_audio_id = None
         
-    # Create unique ID for this audio
+   
     current_audio_id = f"{len(audio_bytes.getvalue())}_{audio_bytes.getvalue()[:10]}"
     
     if current_audio_id != st.session_state.last_audio_id:
@@ -321,7 +320,7 @@ if audio_bytes:
         logger.info(f"Audio received: {len(audio_bytes.getvalue())} bytes")
         
         with st.spinner("Processing your voice..."):
-            # Use browser STT service
+           
             success, text = st.session_state.browser_stt_service.recognize_from_file(audio_bytes)
             
             if success:
@@ -332,23 +331,23 @@ if audio_bytes:
                 logger.error(f"STT FAILED: {text}")
                 st.error(f"❌ {text}")
 
-# Process user query with STREAMING - FIXED
+
 if user_query:
     logger.info(f"New query received: '{user_query[:100]}...'")
     logger.info(f"Thread ID: {st.session_state.thread_id[:8]}")
     
-    # Add user message to history FIRST
+    
     st.session_state.chat_history.append({
         "role": "user",
         "content": user_query
     })
     logger.info(f"User message added to history - Total messages: {len(st.session_state.chat_history)}")
     
-    # Display the user message immediately
+    
     with st.chat_message("user"):
         st.markdown(user_query)
     
-    # Show assistant thinking with streaming
+    
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
@@ -356,12 +355,12 @@ if user_query:
         try:
             logger.info("Calling RAG agent with streaming...")
             
-            # Stream response from RAG agent
+            
             for chunk in stream_rag_agent(
                 query=user_query,
                 thread_id=st.session_state.thread_id
             ):
-                # Check for errors
+               
                 if isinstance(chunk, dict) and "error" in chunk:
                     error_msg = f"❌ Error: {chunk['error']}"
                     message_placeholder.error(error_msg)
@@ -369,34 +368,34 @@ if user_query:
                     logger.error(f"Streaming error: {chunk['error']}")
                     break
                 
-                # Extract text from LangGraph chunk
+                
                 if isinstance(chunk, dict):
-                    # Check for 'model' key (AI response)
+                    
                     if 'model' in chunk and 'messages' in chunk['model']:
                         messages = chunk['model']['messages']
                         for msg in messages:
                             if hasattr(msg, 'content') and msg.content:
-                                # Check if this is the final answer (not tool call)
+                                
                                 if not hasattr(msg, 'tool_calls') or not msg.tool_calls:
                                     full_response = msg.content
-                                    # Update with typing cursor
+                                   
                                     message_placeholder.markdown(full_response + "▌", unsafe_allow_html=True)
                     
-                    # Check for 'tools' key (tool output) - optional display
+                    
                     elif 'tools' in chunk and 'messages' in chunk['tools']:
-                        # This is the RAG tool response, you can optionally show it
+                        
                         logger.info("Tool response received (RAG search complete)")
                 else:
-                    # If it's a plain string chunk (shouldn't happen with LangGraph but just in case)
+                    
                     full_response += str(chunk)
                     message_placeholder.markdown(full_response + "▌", unsafe_allow_html=True)
             
-            # Final update without cursor
+            
             if full_response:
                 message_placeholder.markdown(full_response, unsafe_allow_html=True)
                 logger.info(f"RAG SUCCESS - Response length: {len(full_response)} chars")
                 
-                # Add assistant response to history
+                
                 st.session_state.chat_history.append({
                     "role": "assistant",
                     "content": full_response
@@ -420,11 +419,11 @@ if user_query:
                 "content": error_msg
             })
     
-    # Rerun to update chat display with Read Aloud buttons
+
     logger.info("Rerunning app to update chat display")
     st.rerun()
 
-# Footer - Below input
+
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.85rem; padding: 1rem;">
