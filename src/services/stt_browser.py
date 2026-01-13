@@ -47,9 +47,11 @@ class BrowserSTTService:
             import wave
             
             if not self.speech_config:
-                return False, "Set SPEECH_KEY and SPEECH_ENDPOINT"
+                logger.error("Speech config not initialized - missing credentials")
+                return False, "Azure Speech Service not configured"
             
             if not audio_bytes:
+                logger.error("No audio data provided")
                 return False, "No audio data provided"
             
             logger.info(f"Processing audio bytes: {len(audio_bytes)} bytes")
@@ -67,12 +69,18 @@ class BrowserSTTService:
                         bits_per_sample = wav_file.getsampwidth() * 8
                         num_frames = wav_file.getnframes()
                         raw_data = wav_file.readframes(num_frames)
+                        duration = num_frames / sample_rate
                         
-                logger.info(f"WAV Format: {sample_rate}Hz, {channels}ch, {bits_per_sample}bit")
+                logger.info(f"WAV Format: {sample_rate}Hz, {channels}ch, {bits_per_sample}bit, {num_frames} frames, {duration:.2f}s duration")
+                logger.info(f"Raw audio data size: {len(raw_data)} bytes")
                 
             except Exception as e:
                 logger.warning(f"Failed to parse WAV header: {e}. Trying raw upload.")
                 raw_data = audio_bytes
+                
+            if not raw_data or len(raw_data) == 0:
+                logger.error("No audio data after processing")
+                return False, "No valid audio data"
                 
             stream_format = speechsdk.audio.AudioStreamFormat(
                 samples_per_second=sample_rate,
@@ -88,33 +96,35 @@ class BrowserSTTService:
                 audio_config=audio_config
             )
             
+            logger.info(f"Writing {len(raw_data)} bytes to audio stream...")
             audio_stream.write(raw_data)
             audio_stream.close()
             
             logger.info("Starting speech recognition...")
             result = speech_recognizer.recognize_once_async().get()
+            logger.info(f"Recognition result reason: {result.reason}")
             
             if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-                logger.info(f"Recognized: {result.text}")
+                logger.info(f"✅ Recognized: {result.text}")
                 return True, result.text
             
             elif result.reason == speechsdk.ResultReason.NoMatch:
-                logger.warning(f"No speech: {result.no_match_details}")
-                return False, "No speech detected in audio"
+                logger.warning(f"❌ No speech detected: {result.no_match_details}")
+                return False, "No speech detected in audio. Please speak clearly and try again."
             
             elif result.reason == speechsdk.ResultReason.Canceled:
                 details = result.cancellation_details
-                logger.error(f"Canceled: {details.reason}")
+                logger.error(f"❌ Recognition canceled: {details.reason}")
                 if details.reason == speechsdk.CancellationReason.Error:
-                    logger.error(f"Error: {details.error_details}")
-                    return False, f"Recognition error: {details.error_details}"
-                return False, "Recognition canceled"
+                    logger.error(f"Error details: {details.error_details}")
+                    return False, f"{details.error_details}"
+                return False, "Recognition was canceled. Please try again."
             
-            return False, "Unknown error"
+            return False, "Unknown recognition error"
             
         except Exception as e:
-            logger.error(f"STT error: {str(e)}")
-            return False, f"Error: {str(e)}"
+            logger.error(f"❌ STT Exception: {str(e)}", exc_info=True)
+            return False, f"Error processing audio: {str(e)}"
     
     def recognize_from_file(self, audio_file) -> Tuple[bool, str]:
         """
